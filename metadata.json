@@ -1,0 +1,7 @@
+{
+  "name": "RealMeta Museum Guide",
+  "description": "An intelligent museum guide that uses your camera to identify artworks and provide rich, contextual information without requiring a login. Explore curated tours and learn the stories behind the art.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
