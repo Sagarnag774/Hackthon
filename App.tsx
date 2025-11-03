@@ -1,13 +1,14 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Artwork, Tour, View } from './types';
-import { TOURS } from './constants';
+import { TOURS as initialTours } from './constants';
 import { identifyArtwork } from './services/geminiService';
 import { trackEvent } from './services/analyticsService';
 import Scanner from './components/Scanner';
 import ArtworkDetail from './components/ArtworkDetail';
 import TourView from './components/TourView';
 import BottomNav from './components/BottomNav';
+import TourEditor from './components/TourEditor';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('scanner');
@@ -17,6 +18,9 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [showPrivacyBanner, setShowPrivacyBanner] = useState<boolean>(false);
+  const [isManagerMode, setIsManagerMode] = useState<boolean>(false);
+  const [tours, setTours] = useState<Tour[]>([]);
+  const [editingTour, setEditingTour] = useState<Tour | null>(null);
 
   useEffect(() => {
     let visitorId = localStorage.getItem('realmeta_visitor_id');
@@ -31,7 +35,28 @@ const App: React.FC = () => {
     if (!privacyAcknowledged) {
       setShowPrivacyBanner(true);
     }
+    
+    // Load tours from localStorage or initial constants
+    const storedTours = localStorage.getItem('realmeta_tours');
+    if (storedTours) {
+      setTours(JSON.parse(storedTours));
+    } else {
+      setTours(initialTours);
+    }
+    
+    // Check for manager session
+    const managerSession = sessionStorage.getItem('realmeta_manager');
+    if (managerSession) {
+      setIsManagerMode(true);
+    }
   }, []);
+  
+  // Effect to save tours to localStorage whenever they change
+  useEffect(() => {
+    if (tours.length > 0) {
+        localStorage.setItem('realmeta_tours', JSON.stringify(tours));
+    }
+  }, [tours]);
 
   const handleScan = async (imageData: string) => {
     setIsLoading(true);
@@ -67,11 +92,77 @@ const App: React.FC = () => {
     setCurrentArtwork(null);
     setError(null);
   };
+  
+  const handleLogin = () => {
+    const password = prompt('Enter manager password:');
+    if (password === 'admin123') {
+      setIsManagerMode(true);
+      sessionStorage.setItem('realmeta_manager', 'true');
+      trackEvent('manager_login', { userId });
+    } else if (password) {
+      alert('Incorrect password.');
+    }
+  };
+
+  const handleAddNewTour = () => {
+    setEditingTour({
+      id: `tour_${Date.now()}`,
+      title: '',
+      description: '',
+      artworks: [],
+    });
+    setCurrentView('tourEditor');
+  };
+
+  const handleEditTour = (tour: Tour) => {
+    setEditingTour(tour);
+    setCurrentView('tourEditor');
+  };
+
+  const handleDeleteTour = (tourId: string) => {
+    if (window.confirm('Are you sure you want to delete this tour? This action cannot be undone.')) {
+      const updatedTours = tours.filter(t => t.id !== tourId);
+      setTours(updatedTours);
+      trackEvent('tour_deleted', { userId, tourId });
+    }
+  };
+  
+  const handleSaveTour = (tourToSave: Tour) => {
+    const isNew = !tours.some(t => t.id === tourToSave.id);
+    if (isNew) {
+      setTours([...tours, tourToSave]);
+      trackEvent('tour_created', { userId, tourId: tourToSave.id });
+    } else {
+      setTours(tours.map(t => t.id === tourToSave.id ? tourToSave : t));
+      trackEvent('tour_updated', { userId, tourId: tourToSave.id });
+    }
+    setCurrentView('tours');
+    setEditingTour(null);
+  };
+
+  const handleCancelEdit = () => {
+    setCurrentView('tours');
+    setEditingTour(null);
+  };
 
   const renderView = () => {
     switch (currentView) {
       case 'tours':
-        return <TourView tours={TOURS} onSelectTour={handleSelectTour} />;
+        return <TourView 
+                tours={tours} 
+                onSelectTour={handleSelectTour}
+                isManagerMode={isManagerMode}
+                onLogin={handleLogin}
+                onAddNewTour={handleAddNewTour}
+                onEditTour={handleEditTour}
+                onDeleteTour={handleDeleteTour}
+              />;
+      case 'tourEditor':
+        return editingTour && <TourEditor 
+                                tour={editingTour} 
+                                onSave={handleSaveTour} 
+                                onCancel={handleCancelEdit} 
+                              />;
       case 'detail':
         return currentArtwork && <ArtworkDetail artwork={currentArtwork} onBack={resetToScanner} userId={userId} activeTour={activeTour} />;
       case 'scanner':

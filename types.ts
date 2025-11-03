@@ -24,4 +24,4 @@ export interface Tour {
   }[];
 }
 
-export type View = 'scanner' | 'tours' | 'detail';
+export type View = 'scanner' | 'tours' | 'detail' | 'tourEditor';
