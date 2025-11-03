@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Tour } from '../types';
 import { CameraIcon } from './icons/CameraIcon';
@@ -59,11 +58,25 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, isLoading, error, activeTour,
   }, [onScan, isLoading]);
   
   const getTourProgress = () => {
-    if (!activeTour || !currentArtworkTitle) return { nextArtwork: activeTour.artworks[0], progress: 0 };
-    const currentIndex = activeTour.artworks.findIndex(art => art.title === currentArtworkTitle);
-    if (currentIndex > -1 && currentIndex < activeTour.artworks.length - 1) {
+    if (!activeTour) {
+      return { nextArtwork: null, progress: 0 };
+    }
+
+    const currentIndex = currentArtworkTitle
+      ? activeTour.artworks.findIndex(art => art.title === currentArtworkTitle)
+      : -1;
+
+    if (currentIndex === -1) {
+      // Tour has started, but no valid artwork scanned yet. Show the first one.
+      return { nextArtwork: activeTour.artworks[0], progress: 0 };
+    }
+
+    if (currentIndex < activeTour.artworks.length - 1) {
+      // There is a next artwork.
       return { nextArtwork: activeTour.artworks[currentIndex + 1], progress: currentIndex + 1 };
     }
+
+    // Tour is complete.
     return { nextArtwork: null, progress: activeTour.artworks.length };
   };
   
