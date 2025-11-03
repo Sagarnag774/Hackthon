@@ -21,6 +21,7 @@ export interface Tour {
   artworks: {
     title: string;
     story: string;
+    image?: string;
   }[];
 }
 

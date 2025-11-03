@@ -54,8 +54,18 @@ const TourView: React.FC<TourViewProps> = ({ tours, onSelectTour, isManagerMode,
             )}
             <h2 className="text-xl font-bold text-amber-700">{tour.title}</h2>
             <p className="text-stone-600 mt-2">{tour.description}</p>
-            <ul className="mt-4 text-sm text-stone-500 list-disc list-inside space-y-1">
-                {tour.artworks.map(art => <li key={art.title}>{art.title}</li>)}
+            <ul className="mt-4 text-sm text-stone-500 list-inside space-y-2">
+                {tour.artworks.map(art => (
+                    <li key={art.title} className="flex items-center">
+                        {art.image && (
+                            <img src={`data:image/jpeg;base64,${art.image}`} alt={art.title} className="w-8 h-8 rounded-sm object-cover mr-3"/>
+                        )}
+                        {!art.image && (
+                            <div className="w-8 h-8 rounded-sm bg-stone-200 mr-3"></div>
+                        )}
+                        <span>{art.title || "Untitled Artwork"}</span>
+                    </li>
+                ))}
             </ul>
             <button
               onClick={() => onSelectTour(tour)}

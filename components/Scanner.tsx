@@ -19,6 +19,15 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, isLoading, error, activeTour,
   useEffect(() => {
     const enableCamera = async () => {
       try {
+        // Use the Permissions API to proactively check for and handle a permanently denied state.
+        if (navigator.permissions && navigator.permissions.query) {
+            const permissionStatus = await navigator.permissions.query({ name: 'camera' as PermissionName });
+            if (permissionStatus.state === 'denied') {
+                setCameraError("Camera access has been blocked. To use the scanner, please enable camera permissions for this site in your browser settings.");
+                return;
+            }
+        }
+
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'environment' },
         });
@@ -27,8 +36,17 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, isLoading, error, activeTour,
           videoRef.current.onloadedmetadata = () => setIsCameraReady(true);
         }
       } catch (err) {
-        console.error("Camera access denied:", err);
-        setCameraError("Camera access is required. Please enable it in your browser settings.");
+        console.error("Camera access error:", err);
+        if (err instanceof Error) {
+            // This error handling will catch denials from the prompt, or on browsers that don't support the Permissions API.
+            if (err.name === 'NotAllowedError') {
+                 setCameraError("Camera access denied. To use the scanner, please enable camera permissions for this site in your browser settings.");
+            } else {
+                 setCameraError("Could not access camera. Please ensure it is not in use by another app and check browser permissions.");
+            }
+        } else {
+            setCameraError("An unknown error occurred while accessing the camera.");
+        }
       }
     };
     enableCamera();
